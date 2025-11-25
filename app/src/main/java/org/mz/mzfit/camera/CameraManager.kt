@@ -10,7 +10,6 @@ import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 
-
 class CameraManager(
     private val lifecycleOwner: LifecycleOwner,
     private val context: Context
@@ -21,16 +20,16 @@ class CameraManager(
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
 
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
-                }
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(previewView.surfaceProvider)
+            }
 
             val analysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
-                .apply { setAnalyzer(ContextCompat.getMainExecutor(context), analyzer) }
+                .apply {
+                    setAnalyzer(ContextCompat.getMainExecutor(context), analyzer)
+                }
 
             try {
                 cameraProvider.unbindAll()
@@ -43,7 +42,6 @@ class CameraManager(
             } catch (e: Exception) {
                 Log.e("CameraManager", "Camera bind error", e)
             }
-
         }, ContextCompat.getMainExecutor(context))
     }
 }

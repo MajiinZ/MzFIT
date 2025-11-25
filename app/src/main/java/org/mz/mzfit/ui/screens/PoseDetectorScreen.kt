@@ -12,21 +12,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.viewmodel.compose.viewModel
 import org.mz.mzfit.camera.CameraPreview
+import org.mz.mzfit.ui.componenets.PoseOverlay
 import org.mz.mzfit.view.PoseViewModel
 
 @Composable
 fun PoseDetectionScreen(
-    poseViewModel: PoseViewModel = viewModel()
+    poseViewModel: PoseViewModel
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
     var hasPermission by remember { mutableStateOf(false) }
 
-    // Ask for CAMERA permission
+    val landmarks = poseViewModel.landmarks.value   // ✔️ MATCHES YOUR VIEWMODEL
+
+    // Request permission once
     LaunchedEffect(Unit) {
         val granted = ContextCompat.checkSelfPermission(
             context,
@@ -44,33 +43,34 @@ fun PoseDetectionScreen(
         }
     }
 
-    // Re-check when returning from permission dialog
-    LaunchedEffect(Unit) {
-        hasPermission = ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.CAMERA
-        ) == PackageManager.PERMISSION_GRANTED
-    }
 
-    val poseResult by poseViewModel.poseState
-
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize()) {
 
         if (hasPermission) {
+
+            // Start camera ONLY after permission confirmed
             CameraPreview(
                 analyzer = poseViewModel.getAnalyzer(),
                 modifier = Modifier.fillMaxSize()
             )
+
+            PoseOverlay(
+                modifier = Modifier.fillMaxSize(),
+                landmarks = landmarks
+            )
+
         } else {
             Text(
                 text = "Camera permission required",
-                color = Color.White,
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier.align(Alignment.Center),
+                color = Color.White
             )
         }
 
+
+        // Debug: landmark count
         Text(
-            text = "Landmarks: ${poseResult?.landmarks?.size ?: 0}",
+            text = "Landmarks: ${landmarks.size}",
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp),
