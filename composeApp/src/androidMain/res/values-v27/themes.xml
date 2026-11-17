@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MzFit" parent="Theme.MzFit.Base">
+        <item name="android:navigationBarColor">#F2F6F3</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+    <style name="Theme.MzFit.Starting" parent="Theme.MzFit.Starting.Base">
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

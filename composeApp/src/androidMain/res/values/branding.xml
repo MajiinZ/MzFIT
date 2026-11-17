@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MzFit</string>
+    <color name="mzfit_background">#02021D</color>
+    <style name="Theme.MzFit.Base" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">#F2F6F3</item>
+        <item name="android:navigationBarColor">#18212F</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+    <style name="Theme.MzFit" parent="Theme.MzFit.Base" />
+    <style name="Theme.MzFit.Starting.Base" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/mzfit_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/mzfit_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.MzFit</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/mzfit_background</item>
+        <item name="android:navigationBarColor">@color/mzfit_background</item>
+    </style>
+    <style name="Theme.MzFit.Starting" parent="Theme.MzFit.Starting.Base" />
+</resources>
