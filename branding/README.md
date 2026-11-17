@@ -1,6 +1,6 @@
 # MzFit artwork
 
-`MzFit-original.png` is the user-supplied 1254 × 1254 PNG from `C:/Users/zakfa/Downloads/MzFit`, copied without changing its bytes. SHA-256: `6AB1E537BBEB680529F70CD428E997982197431B237312327EEA9F73F7E1A4E4`.
+`MzFit-original.png` is the supplied 1254 × 1254 source PNG, preserved without changing its bytes. SHA-256: `6AB1E537BBEB680529F70CD428E997982197431B237312327EEA9F73F7E1A4E4`.
 
 Android launcher and splash assets are resized/padded copies of this artwork. The green/lime mark and its original dark background are preserved. No generated replacement artwork is used.
 
