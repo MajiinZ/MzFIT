@@ -1,22 +1,8 @@
 pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
+    repositories { google(); mavenCentral(); gradlePluginPortal() }
 }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-        maven {
-            url = uri("https://jitpack.io")
-        }
-    }
+    repositories { google(); mavenCentral() }
 }
-
-rootProject.name = "MzFIT"
-include(":app")
- 
+rootProject.name = "MlPtApp"
+include(":composeApp", ":shared", ":data", ":di", ":navigation", ":feature:training")
