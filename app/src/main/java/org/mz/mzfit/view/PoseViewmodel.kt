@@ -6,8 +6,8 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.mz.mzfit.ml.pose.PoseAnalyzer
-import org.mz.mzfit.ml.pose.PoseLandmarkModel
 import org.mz.mzfit.ml.pose.Smoother
+import org.mz.mzfit.ui.componenets.LandmarkModel
 
 class PoseViewModel : ViewModel() {
 
@@ -19,9 +19,9 @@ class PoseViewModel : ViewModel() {
         _hasCameraPermission.value = granted
     }
 
-    // Landmark state
+    // Landmark state shared with PoseOverlay
     private val _landmarks =
-        androidx.compose.runtime.mutableStateOf<List<PoseLandmarkModel>>(emptyList())
+        androidx.compose.runtime.mutableStateOf<List<LandmarkModel>>(emptyList())
     val landmarks = _landmarks
 
     private val smoother = Smoother(alpha = 0.35f)
@@ -35,14 +35,11 @@ class PoseViewModel : ViewModel() {
     private fun createAnalyzer() {
         analyzer = PoseAnalyzer { pose ->
             viewModelScope.launch(Dispatchers.Default) {
-
                 val raw = pose.allPoseLandmarks
-
-                if (raw.isNotEmpty()) {
-                    val smoothed = smoother.smooth(raw)
-                    _landmarks.value = smoothed
+                _landmarks.value = if (raw.isNotEmpty()) {
+                    smoother.smooth(raw)
                 } else {
-                    _landmarks.value = emptyList()
+                    emptyList()
                 }
             }
         }
