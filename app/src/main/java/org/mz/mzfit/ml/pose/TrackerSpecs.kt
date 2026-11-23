@@ -2,6 +2,8 @@ package org.mz.mzfit.ml.pose
 
 import org.mz.mzfit.data.MotionPattern
 import kotlin.math.abs
+import kotlin.math.acos
+import kotlin.math.hypot
 
 /** How a bilateral measurement is reduced to one number. */
 enum class SideMode {
@@ -15,6 +17,66 @@ enum class SideMode {
 
 /** Three landmarks forming the measured joint angle; the middle one is the vertex. */
 data class JointTriple(val a: Int, val b: Int, val c: Int)
+
+/**
+ * Optional custom measurement for a rep, used instead of the raw 2D [RepSpec.joint] angle when that
+ * angle is unreliable from some camera positions. May keep calibration state between frames.
+ */
+interface RepMetric {
+    fun measure(sk: Skeleton, side: Side): Float?
+    fun reset() {}
+}
+
+/**
+ * Squat depth as the thigh's angle from vertical (0 = standing, 90 = thighs parallel).
+ *
+ * The 2D knee angle depends heavily on camera position: from the front it hardly changes, and at
+ * 45° it reads 10–20° shallower than reality. Instead we use how far the hip has dropped toward the
+ * knee. That vertical drop is preserved whatever the camera yaw: `dy = femur · cos(θ)`. Femur length
+ * is recalibrated each time the user stands tall, so moving nearer to or farther from the phone
+ * between reps doesn't skew depth.
+ */
+class ThighDepthMetric : RepMetric {
+    private val femur = FloatArray(2)
+
+    override fun reset() { femur.fill(0f) }
+
+    override fun measure(sk: Skeleton, side: Side): Float? {
+        val primary = depth(sk, side) ?: return null
+        // From the front both legs are visible; average them to cut landmark noise.
+        val other = if (sk.allVisible(listOf(side.other.hip, side.other.knee, side.other.ankle))) depth(sk, side.other) else null
+        return if (other != null && abs(other - primary) < 25f) (primary + other) / 2f else primary
+    }
+
+    private fun depth(sk: Skeleton, s: Side): Float? {
+        val hip = sk[s.hip] ?: return null
+        val knee = sk[s.knee] ?: return null
+        val len = hypot(knee.x - hip.x, knee.y - hip.y)
+        val dy = knee.y - hip.y
+        var ref = femur[s.ordinal]
+        val kneeAngle = sk.angle(s.hip, s.knee, s.ankle)
+        // Recalibrate only when standing tall. A straight 2D knee alone isn't enough: from the front
+        // it still looks straight at the bottom of a squat. So also require the thigh to be close to
+        // its known length, since a thigh pointing at the camera looks much shorter.
+        if (kneeAngle != null && kneeAngle >= STANDING_KNEE && dy > 0f) {
+            ref = when {
+                ref == 0f -> len
+                len >= ref * 0.88f -> ref + (len - ref) * CALIBRATION_RATE
+                else -> ref
+            }
+        }
+        if (ref == 0f) ref = len
+        if (dy > ref) ref = dy
+        femur[s.ordinal] = ref
+        if (ref < 1f) return null
+        return Math.toDegrees(acos((dy / ref).coerceIn(-1f, 1f).toDouble())).toFloat()
+    }
+
+    private companion object {
+        const val STANDING_KNEE = 155f
+        const val CALIBRATION_RATE = 0.15f
+    }
+}
 
 /**
  * A single biomechanical rule. [passes] returns null when it can't be evaluated this frame
@@ -52,6 +114,10 @@ class RepSpec(
     val returnCue: String,
     /** Reps faster than this get a tempo warning; 0 disables. */
     val minRepMs: Long = 900,
+    /** Angle at which the rep counts as full range of motion. Defaults to 92% of the way to [targetAngle]. */
+    fullAngle: Float? = null,
+    /** Custom measurement; when null, [joint] is measured directly. [joint] is still drawn on the overlay. */
+    val metric: RepMetric? = null,
     sideMode: SideMode,
     required: (Side) -> List<Int>,
     checks: List<FormCheck> = emptyList(),
@@ -61,6 +127,7 @@ class RepSpec(
     /** 0 at rest → 1 at full range of motion. Works for angles that close or open. */
     fun progress(angle: Float): Float = ((angle - restAngle) / (targetAngle - restAngle)).coerceIn(0f, 1.2f)
     val activeProgress: Float get() = (activeAngle - restAngle) / (targetAngle - restAngle)
+    val fullProgress: Float = fullAngle?.let { progress(it) } ?: 0.92f
 }
 
 class HoldSpec(
@@ -96,6 +163,29 @@ object TrackerSpecs {
         (sk.fromHorizontal(s.shoulder, s.ankle) ?: 90f) < 35f
     }
 
+    /** Push-up body line: flat to ~55° covers floor, decline and incline (bench) push-ups. Standing is ~90°. */
+    private val pushUpBody: (Skeleton, Side) -> Boolean = { sk, s ->
+        (sk.fromHorizontal(s.shoulder, s.ankle) ?: 90f) < 55f
+    }
+
+    /**
+     * Knee valgus, front view only: knees closer together than the ankles mid-rep. From the side
+     * the knees overlap, so the check is skipped when the shoulders aren't seen square-on.
+     */
+    private val kneesCaveIn = FormCheck("valgus", "Push your knees out over your toes",
+        highlight = { listOf(Lm.LEFT_KNEE, Lm.RIGHT_KNEE) }) { sk, _ ->
+        val shoulders = sk.distance(Lm.LEFT_SHOULDER, Lm.RIGHT_SHOULDER)
+        val torso = sk.distance(Lm.LEFT_SHOULDER, Lm.LEFT_HIP)
+        val lk = sk[Lm.LEFT_KNEE]; val rk = sk[Lm.RIGHT_KNEE]
+        val la = sk[Lm.LEFT_ANKLE]; val ra = sk[Lm.RIGHT_ANKLE]
+        if (shoulders == null || torso == null || lk == null || rk == null || la == null || ra == null) null
+        else if (shoulders < torso * 0.45f) null
+        else {
+            val ankleGap = abs(la.x - ra.x)
+            if (ankleGap < 1f) null else abs(lk.x - rk.x) >= ankleGap * 0.8f
+        }
+    }
+
     /** Elbows/arms must move together on bilateral front-facing lifts. */
     private fun evenArms(triple: (Side) -> JointTriple, tolerance: Float, msg: String) =
         FormCheck("even", msg, activeOnly = true, highlight = { listOf(Lm.LEFT_ELBOW, Lm.RIGHT_ELBOW, Lm.LEFT_WRIST, Lm.RIGHT_WRIST) }) { sk, _ ->
@@ -105,10 +195,17 @@ object TrackerSpecs {
         }
 
     fun forPattern(p: MotionPattern): TrackerSpec = when (p) {
+        // Squat: tracked by thigh angle (see ThighDepthMetric), not the raw knee angle.
+        //  • Standing ≈ 0–10°, counts as a rep past 50° (roughly a half squat),
+        //  • full depth at 78°: hip joint centre within ~12° of parallel, which puts the hip crease
+        //    at about knee height (the usual "parallel" standard).
+        // The old knee-angle thresholds gave "good depth" around 30° above parallel.
         MotionPattern.SQUAT -> RepSpec(
-            joint = ::knee, restAngle = 165f, activeAngle = 125f, targetAngle = 95f,
+            joint = ::knee, restAngle = 5f, activeAngle = 50f, targetAngle = 90f, fullAngle = 78f,
+            metric = ThighDepthMetric(),
             partialMessage = "Go deeper — aim for thighs parallel",
             goingCue = "Sit back and down", returnCue = "Drive up through your mid-foot",
+            minRepMs = 800,
             sideMode = SideMode.BEST, required = { listOf(it.shoulder, it.hip, it.knee, it.ankle) },
             checks = listOf(
                 leanUnder(50f, "Chest up — you're folding forward"),
@@ -117,16 +214,23 @@ object TrackerSpecs {
                     if (heel == null || toe == null || ankle == null) null
                     else heel.y >= toe.y - (sk.distance(s.knee, s.ankle) ?: 100f) * 0.12f
                 },
+                kneesCaveIn,
             ),
         )
 
+        // Push-up: 2D elbow angle, filmed side-on at floor level.
+        //  • Lockout ≈ 160–175°; the rep finishes once you're back above ~141°, so a soft
+        //    lockout still counts.
+        //  • Counts past 125° (about a half rep); full range at 95°. That allows ~5° of landmark
+        //    noise around the standard 90° elbow, roughly "chest a fist from the floor".
         MotionPattern.PUSH_UP -> RepSpec(
-            joint = ::elbow, restAngle = 160f, activeAngle = 120f, targetAngle = 95f,
+            joint = ::elbow, restAngle = 160f, activeAngle = 125f, targetAngle = 85f, fullAngle = 95f,
             partialMessage = "Lower your chest closer to the floor",
             goingCue = "Lower with control", returnCue = "Press the floor away",
+            minRepMs = 700,
             sideMode = SideMode.BEST, required = { listOf(it.shoulder, it.elbow, it.wrist, it.hip, it.ankle) },
             checks = listOf(hipsSag, hipsPike),
-            gate = horizontalBody, gateMessage = "Get into a high plank to start",
+            gate = pushUpBody, gateMessage = "Get into a high plank to start",
         )
 
         MotionPattern.BICEP_CURL -> RepSpec(

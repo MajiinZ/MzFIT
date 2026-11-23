@@ -70,6 +70,7 @@ class ExerciseTracker(private val spec: TrackerSpec) {
     fun reset() {
         state = TrackerState(activeThreshold = state.activeThreshold)
         armed = false; armedFrames = 0; repFaults.clear(); failStreak.clear(); repScores.clear()
+        (spec as? RepSpec)?.metric?.reset()
         lastFrameMs = 0L
     }
 
@@ -144,7 +145,7 @@ class ExerciseTracker(private val spec: TrackerSpec) {
             }
             Phase.ECCENTRIC -> {
                 repMaxProgress = max(repMaxProgress, p)
-                s = if (p >= 0.92f) {
+                s = if (p >= spec.fullProgress) {
                     s.copy(phase = Phase.CONCENTRIC, cue = faultCue ?: Cue("Good depth — ${spec.returnCue.lowercase()}", CueLevel.GOOD))
                 } else if (p < repMaxProgress - TURN_BACK && repMaxProgress >= spec.activeProgress) {
                     s.copy(phase = Phase.CONCENTRIC, cue = faultCue ?: Cue(spec.returnCue, CueLevel.INFO))
@@ -167,7 +168,7 @@ class ExerciseTracker(private val spec: TrackerSpec) {
 
     private fun completeRep(spec: RepSpec, s: TrackerState, now: Long): TrackerState {
         val duration = now - repStartMs
-        val full = repMaxProgress >= 0.92f
+        val full = repMaxProgress >= spec.fullProgress
         val faults = repFaults.filterValues { it >= FAULT_DEBOUNCE_FRAMES }.keys.toList()
         val tooFast = spec.minRepMs > 0 && duration < spec.minRepMs
         var score = 100
@@ -217,6 +218,10 @@ class ExerciseTracker(private val spec: TrackerSpec) {
         fun read(s: Side): AngleReadout? {
             val t = spec.joint(s)
             return sk.angle(t.a, t.b, t.c)?.let { AngleReadout(t.b, t.a, t.c, it) }
+        }
+        spec.metric?.let { m ->
+            val shown = listOfNotNull(read(side))
+            return m.measure(sk, side) to shown
         }
         return when (spec.sideMode) {
             SideMode.BEST -> read(side).let { it?.degrees to listOfNotNull(it) }

@@ -111,6 +111,132 @@ class ExerciseTrackerTest {
         assertEquals(0, tr.current.reps)
     }
 
+    // ---------------- squat: front view & depth standard ----------------
+
+    /**
+     * Front-on squatter. Thighs point at the camera, so only the hip's vertical drop shows depth:
+     * the 2D knee angle stays ~180°. [thighDeg] is thigh-from-vertical (90 = parallel).
+     */
+    private fun frontSquatFrame(thighDeg: Float, kneeGap: Float = 160f): Skeleton {
+        val c = 0.95f
+        val dy = (200 * cos(Math.toRadians(thighDeg.toDouble()))).toFloat()
+        fun leg(cx: Float, kx: Float) = Triple(Joint(cx, 800f - dy, 0f, c), Joint(kx, 800f, 0f, c), Joint(cx, 1000f, 0f, c))
+        val (lh, lk, la) = leg(420f, 500f - kneeGap / 2)
+        val (rh, rk, ra) = leg(580f, 500f + kneeGap / 2)
+        val ls = Joint(400f, lh.y - 300f, 0f, c); val rs = Joint(600f, rh.y - 300f, 0f, c)
+        t += 33
+        return Skeleton(mapOf(
+            Lm.LEFT_HIP to lh, Lm.LEFT_KNEE to lk, Lm.LEFT_ANKLE to la, Lm.LEFT_SHOULDER to ls,
+            Lm.RIGHT_HIP to rh, Lm.RIGHT_KNEE to rk, Lm.RIGHT_ANKLE to ra, Lm.RIGHT_SHOULDER to rs,
+            Lm.LEFT_HEEL to Joint(la.x, 1010f, 0f, c), Lm.LEFT_FOOT to Joint(la.x - 10, 1012f, 0f, c),
+            Lm.RIGHT_HEEL to Joint(ra.x, 1010f, 0f, c), Lm.RIGHT_FOOT to Joint(ra.x + 10, 1012f, 0f, c),
+        ), t)
+    }
+
+    private fun thighRep(bottom: Float, frames: Int = 30): List<Float> {
+        val down = (0 until frames).map { 3f + (bottom - 3f) * it / (frames - 1) }
+        return down + down.reversed()
+    }
+
+    @Test fun countsSquatsFilmedFromTheFront() {
+        val tr = squatTracker()
+        repeat(10) { tr.update(frontSquatFrame(3f)) }
+        repeat(3) { thighRep(92f).forEach { tr.update(frontSquatFrame(it)) } }
+        assertEquals(3, tr.current.reps)
+        assertEquals(3, tr.current.goodReps)
+    }
+
+    @Test fun frontViewHalfSquatIsPartial() {
+        val tr = squatTracker()
+        repeat(10) { tr.update(frontSquatFrame(3f)) }
+        thighRep(62f).forEach { tr.update(frontSquatFrame(it)) }
+        assertEquals(1, tr.current.reps)
+        assertFalse(tr.current.lastRep!!.fullRange)
+    }
+
+    @Test fun flagsKneesCavingIn() {
+        val tr = squatTracker()
+        repeat(10) { tr.update(frontSquatFrame(3f)) }
+        thighRep(92f).forEach { tr.update(frontSquatFrame(it, kneeGap = if (it > 40f) 90f else 160f)) }
+        assertEquals(1, tr.current.reps)
+        assertTrue("valgus" in tr.current.lastRep!!.faults)
+    }
+
+    @Test fun sideViewSquatAboveParallelIsNotFullDepth() {
+        // Knee 100° with a vertical shin = thigh 80° from vertical, i.e. 10° above parallel → just counts as full.
+        // Knee 110° = thigh 20° above parallel → counted but flagged as partial (the old thresholds called it full).
+        val tr = squatTracker()
+        tr.feed(List(10) { 170f })
+        tr.feed(rep(110f))
+        assertEquals(1, tr.current.reps)
+        assertFalse(tr.current.lastRep!!.fullRange)
+        tr.feed(rep(100f))
+        assertTrue(tr.current.lastRep!!.fullRange)
+    }
+
+    // ---------------- push-ups ----------------
+
+    /** Side-on push-up. [bodyDeg] tilts the body line (0 = floor, ~45 = hands on a bench). */
+    private fun pushUpFrame(elbow: Float, bodyDeg: Float = 10f, conf: Float = 0.95f): Skeleton {
+        val r = Math.toRadians(bodyDeg.toDouble())
+        val ankle = Joint(200f, 900f, 0f, conf)
+        val shoulder = Joint((200 + 600 * cos(r)).toFloat(), (900 - 600 * sin(r)).toFloat(), 0f, conf)
+        val hip = Joint((ankle.x + shoulder.x) / 2, (ankle.y + shoulder.y) / 2, 0f, conf)
+        // Only the 2D elbow angle matters to the tracker: the wrist sits below the shoulder and the
+        // elbow is offset toward the feet to form an isosceles triangle with the requested angle.
+        val wrist = Joint(shoulder.x, shoulder.y + 260f * sin(Math.toRadians(elbow / 2.0)).toFloat() * 2f, 0f, conf)
+        val half = Math.toRadians((180f - elbow) / 2.0)
+        val mid = Joint((shoulder.x + wrist.x) / 2, (shoulder.y + wrist.y) / 2)
+        val halfChord = kotlin.math.hypot(wrist.x - shoulder.x, wrist.y - shoulder.y) / 2
+        val offset = (halfChord * kotlin.math.tan(half)).toFloat()
+        val el = Joint(mid.x - offset, mid.y, 0f, conf)
+        t += 33
+        return Skeleton(mapOf(Lm.LEFT_SHOULDER to shoulder, Lm.LEFT_ELBOW to el, Lm.LEFT_WRIST to wrist,
+            Lm.LEFT_HIP to hip, Lm.LEFT_ANKLE to ankle), t)
+    }
+
+    private fun pushRep(bottom: Float, frames: Int = 25): List<Float> {
+        val down = (0 until frames).map { 170f - (170f - bottom) * it / (frames - 1) }
+        return down + down.reversed()
+    }
+
+    private fun pushUps() = ExerciseTracker(TrackerSpecs.forPattern(MotionPattern.PUSH_UP))
+
+    @Test fun pushUpFrameHasRequestedElbowAngle() {
+        val sk = pushUpFrame(90f)
+        assertEquals(90f, sk.angle(Lm.LEFT_SHOULDER, Lm.LEFT_ELBOW, Lm.LEFT_WRIST)!!, 0.5f)
+    }
+
+    @Test fun countsFullPushUps() {
+        val tr = pushUps()
+        repeat(10) { tr.update(pushUpFrame(170f)) }
+        repeat(3) { pushRep(85f).forEach { tr.update(pushUpFrame(it)) } }
+        assertEquals(3, tr.current.reps)
+        assertEquals(3, tr.current.goodReps)
+    }
+
+    @Test fun halfPushUpCountsButIsPartial() {
+        val tr = pushUps()
+        repeat(10) { tr.update(pushUpFrame(170f)) }
+        pushRep(112f).forEach { tr.update(pushUpFrame(it)) }
+        assertEquals(1, tr.current.reps)
+        assertFalse(tr.current.lastRep!!.fullRange)
+    }
+
+    @Test fun ignoresElbowWobbleAtTheTop() {
+        val tr = pushUps()
+        repeat(10) { tr.update(pushUpFrame(170f)) }
+        repeat(3) { pushRep(135f).forEach { tr.update(pushUpFrame(it)) } }
+        assertEquals(0, tr.current.reps)
+    }
+
+    @Test fun countsInclinePushUps() {
+        val tr = pushUps()
+        repeat(10) { tr.update(pushUpFrame(170f, bodyDeg = 45f)) }
+        repeat(2) { pushRep(88f).forEach { tr.update(pushUpFrame(it, bodyDeg = 45f)) } }
+        assertEquals(2, tr.current.reps)
+    }
+
     @Test fun angleMath() {
         val a = Joint(0f, 0f); val b = Joint(0f, 1f); val c = Joint(1f, 1f)
         assertEquals(90f, Skeleton.angleOf(a, b, c), 0.01f)

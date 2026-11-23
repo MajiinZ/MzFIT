@@ -14,7 +14,7 @@ enum class Level(val displayName: String) { BEGINNER("Beginner"), INTERMEDIATE("
  * Each maps to a tracker spec in [org.mz.mzfit.ml.pose.TrackerSpecs].
  */
 enum class MotionPattern(val cameraSetup: String) {
-    SQUAT("Stand side-on (or at 45°) to the camera, 2–3 m away, head to feet in frame."),
+    SQUAT("Side-on or 45° gives the best form feedback; facing the camera also works and checks your knees. Stand 2–3 m away, head to feet in frame."),
     PUSH_UP("Place the phone at floor level, side-on to your body."),
     BICEP_CURL("Stand side-on or at 45° to the camera with your upper body and hips in frame."),
     SHOULDER_PRESS("Face the camera; keep your arms and hips in frame."),
