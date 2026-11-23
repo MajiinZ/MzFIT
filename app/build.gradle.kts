@@ -12,15 +12,16 @@ android {
         applicationId = "org.mz.mzfit"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -39,43 +40,37 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
 dependencies {
-
-    // ------- Compose + Lifecycle -------
+    // ------- Core / Lifecycle -------
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.navigation.compose)
 
+    // ------- Compose -------
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons)
 
     // ------- CameraX -------
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
-
-    // CameraX <-> MLKit integration
     implementation(libs.androidx.camera.mlkit)
 
-    // ------- ML Kit Pose -------
-    // Base 2D Pose Model
+    // ------- ML Kit Pose (fast + accurate models, switchable in Settings) -------
     implementation(libs.mlkit.pose)
-
-    // Accurate 3D Pose Model (THE ONE YOU WANT)
     implementation(libs.mlkit.pose.accurate)
-
-    // ------- ML Kit Other Models (optional) -------
-    implementation(libs.mlkit.face)
-   // implementation(libs.mlkit.object)
-  //  implementation(libs.mlkit.label)
 
     // ------- Tests -------
     testImplementation(libs.junit)
