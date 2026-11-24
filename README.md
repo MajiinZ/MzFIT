@@ -18,7 +18,7 @@ MzFit brings planning, performance logging, and movement education into one trai
 
 **Android is the primary implementation.** It runs without an account or backend and stores training data locally in SQLite. Shared Compose screens also target desktop, web, and iOS, with different levels of feature support.
 
-The current version is a development preview. It has been built and tested on Android; it is not a published App Store or Google Play release.
+The current version is a development preview. It has been built and tested on Android; it is not a published App Store or Google Play release. Android 0.8.0 release preparation targets API 36 and includes upload signing and an in-app Privacy & safety screen. See the [Play release checklist](docs/PLAY_RELEASE.md) and [privacy policy](docs/PRIVACY.md) for the remaining publication gates.
 
 ## Features
 

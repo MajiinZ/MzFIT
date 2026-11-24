@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
@@ -53,16 +54,37 @@ kotlin {
         }
     }
 }
+val releaseKeys = Properties().apply {
+    val source = rootProject.file("signing.properties")
+    if (source.exists()) source.inputStream().use { load(it) }
+}
+val signingFields = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+val hasReleaseKeys = signingFields.all { !releaseKeys.getProperty(it).isNullOrBlank() }
+
 android {
     namespace = "com.mlpt.app"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.mlpt.app"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 9
-        versionName = "0.7.0"
+        targetSdk = 36
+        versionCode = 10
+        versionName = "0.8.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    signingConfigs {
+        if (hasReleaseKeys) create("upload") {
+            storeFile = rootProject.file(releaseKeys.getProperty("storeFile"))
+            storePassword = releaseKeys.getProperty("storePassword")
+            keyAlias = releaseKeys.getProperty("keyAlias")
+            keyPassword = releaseKeys.getProperty("keyPassword")
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            isDebuggable = false
+            if (hasReleaseKeys) signingConfig = signingConfigs.getByName("upload")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
@@ -80,3 +102,12 @@ compose.desktop {
         }
     }
 }
+
+// An unsigned bundle must never be mistaken for an upload-ready release.
+tasks.register("verifyReleaseSigning") {
+    doLast {
+        check(hasReleaseKeys) { "Release signing is missing. Copy signing.properties.example to signing.properties and configure an upload key." }
+        check(rootProject.file(releaseKeys.getProperty("storeFile")).isFile) { "Upload keystore file is missing." }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn("verifyReleaseSigning") }

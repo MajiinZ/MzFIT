@@ -61,6 +61,8 @@ fun PoseDetectionScreen() {
         PoseExercise.entries.forEach { option -> FilterChip(selected = exercise == option, enabled = !running,
             onClick = { exercise = option; confirmed = false }, label = { Text(option.label) }) }
     }
+    Text("Camera frames are analyzed on this device. Derived workout measurements are saved locally. Google ML Kit can collect SDK usage and diagnostic data; see Privacy & safety in the menu.", color = SecondaryText, style = MaterialTheme.typography.bodySmall)
+    Text("General fitness only. Not a medical device or a substitute for professional advice.", color = SecondaryText, style = MaterialTheme.typography.bodySmall)
     Text(exercise.instructions, color = SecondaryText)
     Text("Checks: ${exercise.checks}", style = MaterialTheme.typography.bodySmall, color = PerformanceBlue)
     if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())

@@ -11,6 +11,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
@@ -277,13 +279,34 @@ private fun previousBest(sets: List<PerformanceSet>, name: String) = sets.filter
             Text("${loadText(record.heaviestKg, prefs.pounds)} × ${record.repsAtHeaviest}", style = MaterialTheme.typography.headlineLarge, color = PerformanceBlue)
             Text("Heaviest recorded load · ${record.points.size} sessions logged", color = SecondaryText)
             val points = record.points.takeLast(12)
-            Canvas(Modifier.fillMaxWidth().height(170.dp).semantics { contentDescription = "Heaviest load per workout for ${record.name}: " + points.joinToString { "Workout ${it.workoutId}: ${loadText(it.heaviestKg, prefs.pounds)}" } }) {
-                val top = 10.dp.toPx(); val left = 10.dp.toPx(); val bottom = size.height - top
-                repeat(4) { val y = top + (bottom - top) * it / 3; drawLine(Divider, Offset(left, y), Offset(size.width - left, y), 1.dp.toPx()) }
-                val max = points.maxOf { it.heaviestKg }.coerceAtLeast(1.0)
-                val positions = points.mapIndexed { index, p -> Offset(if (points.size == 1) size.width / 2 else left + (size.width - left * 2) * index / (points.size - 1), (bottom - (bottom - top) * p.heaviestKg / max).toFloat()) }
-                if (positions.size > 1) drawPath(Path().apply { moveTo(positions.first().x, positions.first().y); positions.drop(1).forEach { lineTo(it.x, it.y) } }, PerformanceBlue, style = Stroke(3.dp.toPx()))
-                positions.forEach { drawCircle(PerformanceBlue, 5.dp.toPx(), it) }
+            val change = points.last().heaviestKg - points.first().heaviestKg
+            Text(if (points.size < 2) "Your starting point · Log another session to see your trend"
+                else "${if (change > 0) "+" else if (change < 0) "−" else ""}${loadText(kotlin.math.abs(change), prefs.pounds)} since first session shown",
+                color = PerformanceBlue, style = MaterialTheme.typography.titleMedium)
+            val maximum = points.maxOf { it.heaviestKg }.coerceAtLeast(1.0) * 1.1
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.height(190.dp).padding(vertical = 3.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                    listOf(maximum, maximum * 2 / 3, maximum / 3, 0.0).forEach {
+                        Text(loadText(it, prefs.pounds), style = MaterialTheme.typography.labelSmall, color = SecondaryText)
+                    }
+                }
+                Canvas(Modifier.weight(1f).height(190.dp).semantics { contentDescription = "Heaviest load per workout for ${record.name}: " + points.joinToString { "Workout ${it.workoutId}: ${loadText(it.heaviestKg, prefs.pounds)}" } }) {
+                    val top = 10.dp.toPx(); val left = 10.dp.toPx(); val bottom = size.height - top
+                    repeat(4) { val y = top + (bottom - top) * it / 3; drawLine(Divider, Offset(left, y), Offset(size.width - left, y), 1.dp.toPx()) }
+                    val max = maximum
+                    val positions = points.mapIndexed { index, p -> Offset(if (points.size == 1) size.width / 2 else left + (size.width - left * 2) * index / (points.size - 1), (bottom - (bottom - top) * p.heaviestKg / max).toFloat()) }
+                    if (positions.size > 1) {
+                        val line = Path().apply { moveTo(positions.first().x, positions.first().y); positions.drop(1).forEach { lineTo(it.x, it.y) } }
+                        val fill = Path().apply { addPath(line); lineTo(positions.last().x, bottom); lineTo(positions.first().x, bottom); close() }
+                        drawPath(fill, Brush.verticalGradient(listOf(PerformanceBlue.copy(alpha = 0.22f), PerformanceBlue.copy(alpha = 0.01f))))
+                        drawPath(line, PerformanceBlue, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+                    }
+                    positions.forEach { drawCircle(CardSurface, 6.dp.toPx(), it); drawCircle(PerformanceBlue, 4.dp.toPx(), it) }
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Workout #${points.first().workoutId}", style = MaterialTheme.typography.labelSmall, color = SecondaryText)
+                if (points.size > 1) Text("Workout #${points.last().workoutId}", style = MaterialTheme.typography.labelSmall, color = SecondaryText)
             }
             Text("Last ${points.size} recorded sessions · Heaviest external load", color = SecondaryText, style = MaterialTheme.typography.bodySmall)
             Text("Recorded load × reps: ${loadText(record.externalVolumeKg, prefs.pounds)} total", style = MaterialTheme.typography.titleMedium)

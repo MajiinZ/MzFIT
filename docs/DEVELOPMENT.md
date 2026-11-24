@@ -9,9 +9,9 @@ MzFit pins its build dependencies for reproducibility. Check the Gradle files be
 | JDK | 21 |
 | Kotlin | 2.1.21 |
 | Compose Multiplatform | 1.8.0 |
-| Gradle wrapper | 8.11.1 |
-| Android Gradle Plugin | 8.8.2 |
-| Android compile / target SDK | 35 / 35 |
+| Gradle wrapper | 8.14.3 |
+| Android Gradle Plugin | 8.13.2 |
+| Android compile / target SDK | 36 / 36 |
 | Android minimum SDK | 26 |
 | Coroutines | 1.10.1 |
 | CameraX | 1.4.2 |
@@ -21,11 +21,11 @@ Versions describe the repository configuration, not compliance with future store
 
 ## Local configuration
 
-Install JDK 21 and Android SDK Platform 35. Set `JAVA_HOME` to the JDK and configure the SDK through Android Studio, `ANDROID_HOME`, or an untracked root `local.properties` file:
+Install JDK 21 and Android SDK Platform 36. Set `JAVA_HOME` to the JDK and configure the SDK through Android Studio, `ANDROID_HOME`, or an untracked root `local.properties` file:
 
 ```properties
 # Windows example; replace with your SDK location.
-sdk.dir=C:/Users/YOUR_USER/AppData/Local/Android/Sdk
+sdk.dir=C\:/Users/YOUR_USER/AppData/Local/Android/Sdk
 ```
 
 First builds require network access to download dependencies. The repository includes the Gradle wrapper; a separate Gradle installation is unnecessary.

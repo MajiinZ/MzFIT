@@ -84,7 +84,9 @@ fun App(
                         key(destination) {
                             Column(Modifier.widthIn(max = 1120.dp).fillMaxWidth().verticalScroll(rememberScrollState())
                                 .padding(if (wide) 40.dp else 20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                                if (state.isLoading) {
+                                if (destination == Destination.Privacy) {
+                                    PrivacyScreen()
+                                } else if (state.isLoading) {
                                     LinearProgressIndicator(Modifier.fillMaxWidth())
                                     Text("Loading your saved workouts…")
                                 } else if (!state.storageReady) {
@@ -115,6 +117,7 @@ fun App(
                                         Profile(state.profile, repository::updateProfile)
                                     }
                                     Destination.Tools -> toolsContent(state)
+                                    Destination.Privacy -> Unit
                                 }
                                 }
                                 Text(storageNotice, color = SecondaryText, style = MaterialTheme.typography.bodySmall)
