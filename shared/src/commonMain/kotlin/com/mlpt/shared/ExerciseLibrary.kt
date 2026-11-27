@@ -1,0 +1,90 @@
+package com.mlpt.shared
+
+enum class MuscleGroup(val label: String, val bodyPart: String) {
+    Chest("Chest", "Chest"), Shoulders("Shoulders", "Shoulders"), Biceps("Biceps", "Arms"),
+    Triceps("Triceps", "Arms"), Abs("Abdominals", "Core"), Obliques("Obliques", "Core"),
+    Quads("Quadriceps", "Legs"), Hamstrings("Hamstrings", "Legs"), Glutes("Glutes", "Legs"),
+    Calves("Calves", "Legs"), Lats("Lats", "Back"), UpperBack("Upper back", "Back"),
+}
+
+enum class LiftMotion { Squat, Deadlift, BenchPress, OverheadPress, Row, PullUp, SplitSquat, RomanianDeadlift }
+
+data class ExerciseGuide(
+    val id: String, val name: String, val primary: Set<MuscleGroup>, val secondary: Set<MuscleGroup>,
+    val equipment: String, val focus: String, val steps: List<String>,
+    val motion: LiftMotion? = null,
+)
+
+/** Primary-target matches come first; supporting muscles are deliberately separated. */
+fun exercisesFor(muscle: MuscleGroup): List<ExerciseGuide> = exerciseLibrary
+    .filter { muscle in it.primary || muscle in it.secondary }
+    .sortedBy { if (muscle in it.primary) 0 else 1 }
+
+val exerciseLibrary = listOf(
+    ExerciseGuide("squat", "Barbell back squat", setOf(MuscleGroup.Quads, MuscleGroup.Glutes), setOf(MuscleGroup.Abs),
+        "Barbell · Rack", "A compound knee-and-hip movement for the front thighs and glutes.",
+        listOf("Set the bar on your upper back and brace your trunk.", "Bend your knees and hips together, keeping your feet planted.", "Stand by extending your knees and hips with control."), LiftMotion.Squat),
+    ExerciseGuide("deadlift", "Barbell deadlift", setOf(MuscleGroup.Glutes, MuscleGroup.Hamstrings), setOf(MuscleGroup.UpperBack, MuscleGroup.Quads, MuscleGroup.Abs),
+        "Barbell", "A hip-dominant compound lift; the upper back and trunk help stabilize the load.",
+        listOf("Start with the bar close to your shins and grip it outside your legs.", "Brace, then stand while keeping the bar close to your body.", "Guide your hips back and bend your knees to lower the bar."), LiftMotion.Deadlift),
+    ExerciseGuide("bench", "Barbell bench press", setOf(MuscleGroup.Chest), setOf(MuscleGroup.Triceps, MuscleGroup.Shoulders),
+        "Barbell · Bench · Safeties or spotter", "A horizontal press with the chest as a major mover.",
+        listOf("Lie on the bench with your feet supported and shoulder blades stable.", "Lower the bar toward your chest with wrists above your forearms.", "Press upward under control; use rack safeties or a spotter."), LiftMotion.BenchPress),
+    ExerciseGuide("overhead", "Overhead press", setOf(MuscleGroup.Shoulders), setOf(MuscleGroup.Triceps, MuscleGroup.Abs),
+        "Barbell", "A vertical press that emphasizes the shoulders while the triceps extend the elbows.",
+        listOf("Start with the bar at shoulder height and your trunk braced.", "Press overhead without leaning your lower back excessively.", "Lower the bar to shoulder height under control."), LiftMotion.OverheadPress),
+    ExerciseGuide("row", "Bent-over barbell row", setOf(MuscleGroup.Lats, MuscleGroup.UpperBack), setOf(MuscleGroup.Biceps, MuscleGroup.Shoulders),
+        "Barbell", "A horizontal pull that trains the back, with the elbow flexors assisting.",
+        listOf("Hinge at the hips, soften your knees and keep your trunk steady.", "Pull the bar toward your lower ribs, leading with your elbows.", "Extend your arms without changing your trunk position."), LiftMotion.Row),
+    ExerciseGuide("pullup", "Pull-up", setOf(MuscleGroup.Lats), setOf(MuscleGroup.Biceps, MuscleGroup.UpperBack),
+        "Pull-up bar · Assistance if needed", "A vertical pull that emphasizes the lats; use assistance to control the movement.",
+        listOf("Grip the bar and begin from a controlled hang.", "Pull your body upward, bringing your elbows toward your sides.", "Lower with control; use a band or assisted machine if needed."), LiftMotion.PullUp),
+    ExerciseGuide("split-squat", "Split squat", setOf(MuscleGroup.Quads, MuscleGroup.Glutes), setOf(MuscleGroup.Abs),
+        "Bodyweight · Optional dumbbells", "A split-stance knee-and-hip exercise for the thighs and glutes.",
+        listOf("Take a comfortable split stance with both feet supported.", "Bend both knees to lower your body while staying balanced.", "Push through the front foot to rise; repeat on both sides."), LiftMotion.SplitSquat),
+    ExerciseGuide("rdl", "Romanian deadlift", setOf(MuscleGroup.Hamstrings, MuscleGroup.Glutes), setOf(MuscleGroup.UpperBack, MuscleGroup.Abs),
+        "Barbell or dumbbells", "A hip hinge that emphasizes the hamstrings and glutes.",
+        listOf("Stand with the weight in front of your thighs and knees slightly bent.", "Move your hips back, keeping the weight close to your legs.", "Return to standing by extending your hips; keep a controlled range."), LiftMotion.RomanianDeadlift),
+    ExerciseGuide("curl", "Dumbbell biceps curl", setOf(MuscleGroup.Biceps), emptySet(),
+        "Dumbbells", "Direct elbow flexion for the biceps, with less demand on the back than a row.",
+        listOf("Stand tall with your arms by your sides.", "Bend your elbows without swinging your torso.", "Lower the weights slowly.")),
+    ExerciseGuide("triceps", "Cable triceps pressdown", setOf(MuscleGroup.Triceps), emptySet(),
+        "Cable machine", "Direct elbow extension for the triceps.",
+        listOf("Keep your upper arms near your sides.", "Straighten your elbows to move the handle down.", "Let your elbows bend again under control.")),
+    ExerciseGuide("lateral", "Dumbbell lateral raise", setOf(MuscleGroup.Shoulders), emptySet(),
+        "Dumbbells", "A shoulder-isolation option that emphasizes the side deltoids.",
+        listOf("Hold light dumbbells at your sides with soft elbows.", "Raise your arms outward to a comfortable height around shoulder level.", "Lower without swinging.")),
+    ExerciseGuide("calf", "Standing calf raise", setOf(MuscleGroup.Calves), emptySet(),
+        "Bodyweight · Optional stable support", "Direct ankle plantar flexion for the calf muscles.",
+        listOf("Stand tall and use a stable support for balance if needed.", "Rise onto the balls of your feet.", "Lower your heels slowly without bouncing.")),
+    ExerciseGuide("crunch", "Curl-up", setOf(MuscleGroup.Abs), emptySet(),
+        "Mat", "A trunk-flexion option for the abdominal muscles.",
+        listOf("Lie on your back with your knees bent and feet supported.", "Curl your shoulders toward your pelvis without pulling your neck.", "Return slowly to the mat.")),
+    ExerciseGuide("side-plank", "Side plank", setOf(MuscleGroup.Obliques), setOf(MuscleGroup.Abs, MuscleGroup.Shoulders),
+        "Mat", "A lateral trunk-stability exercise for the obliques; it is held rather than lifted.",
+        listOf("Set your elbow under your shoulder and stack your legs, or bend your knees.", "Lift your hips to align your trunk.", "Hold while breathing normally, then repeat on the other side.")),
+    ExerciseGuide("bridge", "Glute bridge", setOf(MuscleGroup.Glutes), setOf(MuscleGroup.Hamstrings),
+        "Mat", "A hip-extension option with the back supported by the floor.",
+        listOf("Lie on your back with knees bent and feet on the floor.", "Press through your feet and lift your hips without overextending your back.", "Lower with control.")),
+    ExerciseGuide("pushup", "Push-up", setOf(MuscleGroup.Chest), setOf(MuscleGroup.Triceps, MuscleGroup.Shoulders, MuscleGroup.Abs),
+        "Bodyweight · Optional elevated support", "A bodyweight horizontal press; elevating the hands reduces the loading demand.",
+        listOf("Place your hands on the floor or a stable elevated surface.", "Bend your elbows to lower your chest while keeping your trunk aligned.", "Press away from the surface without letting your hips sag.")),
+    ExerciseGuide("hammer", "Hammer curl", setOf(MuscleGroup.Biceps), emptySet(),
+        "Dumbbells", "A neutral-grip curl that works the biceps alongside other elbow flexors.",
+        listOf("Hold the dumbbells with palms facing each other.", "Bend your elbows while keeping the upper arms still.", "Lower without swinging your trunk.")),
+    ExerciseGuide("extension", "Overhead triceps extension", setOf(MuscleGroup.Triceps), emptySet(),
+        "Dumbbell", "An overhead elbow-extension option for the triceps.",
+        listOf("Hold a manageable dumbbell overhead with both hands.", "Bend your elbows to lower it behind your head without flaring your ribs.", "Extend the elbows smoothly to return overhead.")),
+    ExerciseGuide("seated-calf", "Seated calf raise", setOf(MuscleGroup.Calves), emptySet(),
+        "Chair or calf-raise machine", "A bent-knee calf exercise, offering a different ankle-loading position from standing raises.",
+        listOf("Sit with knees bent and the balls of your feet supported.", "Lift your heels while keeping the rest of your body steady.", "Lower your heels slowly.")),
+    ExerciseGuide("deadbug", "Dead bug", setOf(MuscleGroup.Abs), emptySet(),
+        "Mat", "A trunk-stability alternative to curl-ups; the abdominals resist unwanted back movement.",
+        listOf("Lie on your back with arms raised and knees bent above your hips.", "Reach one arm and the opposite leg away without arching your lower back.", "Return and alternate sides within a controlled range.")),
+    ExerciseGuide("pallof", "Pallof press", setOf(MuscleGroup.Obliques), setOf(MuscleGroup.Abs),
+        "Resistance band or cable", "An anti-rotation exercise: the trunk resists being pulled toward the anchor.",
+        listOf("Stand sideways to a secure band or cable anchor and hold the handle at your chest.", "Press your hands forward while keeping your torso facing ahead.", "Bring your hands back, then repeat facing the other direction.")),
+    ExerciseGuide("facepull", "Cable face pull", setOf(MuscleGroup.UpperBack, MuscleGroup.Shoulders), setOf(MuscleGroup.Biceps),
+        "Cable machine · Rope attachment", "A pulling option for the upper back and rear shoulders, complementing heavier rows.",
+        listOf("Set a rope attachment around face height and hold it with both hands.", "Pull toward your face, separating your hands and keeping your trunk still.", "Reach forward again slowly.")),
+)

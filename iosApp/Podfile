@@ -1,0 +1,7 @@
+platform :ios, '16.0'
+project 'MLPT.xcodeproj'
+
+target 'MLPT' do
+  use_frameworks! :linkage => :static
+  pod 'GoogleMLKit/PoseDetection', '8.0.0'
+end
